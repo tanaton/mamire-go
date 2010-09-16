@@ -31,7 +31,7 @@ func main(){
 	bl := boardList(sl)
 	tl := threadList(bl)
 	tl = qsort(tl)
-	fp, open_err := os.Open(g_output_path, os.O_CREAT | os.O_WRONLY, 0777)
+	fp, open_err := os.Open(g_output_path, os.O_WRONLY | os.O_CREAT, 0777)
 	if open_err != nil { panic("g_output_path") }
 	defer fp.Close()
 	for _, it := range tl {
