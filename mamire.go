@@ -152,6 +152,5 @@ func qsort(list []*thread.Thread) []*thread.Thread {
 	if length > 100 {
 		length = 100
 	}
-	fmt.Printf("%d\n", length)
 	return ret[0:length]
 }
