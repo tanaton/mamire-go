@@ -5,6 +5,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"runtime"
 	"container/vector"
 	"./thread"
 )
@@ -18,6 +19,23 @@ type Board struct {
 	Name		string
 	Ita			string
 	Saba		string
+}
+
+type MiniThread struct {
+	Name		string
+	Saba		string
+	Ita			string
+	Sure		string
+	Point		int
+}
+func NewMiniThread(t *thread.Thread) *MiniThread {
+	this := new(MiniThread)
+	this.Name = t.Name
+	this.Saba = t.Saba
+	this.Ita = t.Ita
+	this.Sure = t.Sure
+	this.Point = t.Point
+	return this
 }
 
 const g_base_path string = "/2ch/dat"
@@ -76,7 +94,7 @@ func serverList() (map[string]Board) {
 	return list
 }
 
-func threadList(bl []Board) ([]*thread.Thread) {
+func threadList(bl []Board) ([]*MiniThread) {
 	tlist := new(vector.Vector)
 	for _, it := range bl {
 		base_path := g_base_path + "/" + it.Saba + "/" + it.Ita
@@ -90,14 +108,15 @@ func threadList(bl []Board) ([]*thread.Thread) {
 				t := thread.NewThread(g_base_path, it.Saba, it.Ita, array[0])
 				if ok, _ := t.GetData(); ok {
 					t.GetPoint()
-					tlist.Push(t)
+					tlist.Push(NewMiniThread(t))
 				}
 			}
 		}
+		runtime.GC()
 	}
-	tl := make([]*thread.Thread, len(*tlist))
+	tl := make([]*MiniThread, len(*tlist))
 	for i, it := range *tlist {
-		tl[i] = it.(*thread.Thread)
+		tl[i] = it.(*MiniThread)
 	}
 	return tl
 }
@@ -119,11 +138,11 @@ func fileGetContents(filename string) ([]byte, os.Error){
 	return data, nil
 }
 
-func qsort(list []*thread.Thread) []*thread.Thread {
-	cmp := func(a, b *thread.Thread) int {
+func qsort(list []*MiniThread) []*MiniThread {
+	cmp := func(a, b *MiniThread) int {
 		return b.Point - a.Point
 	}
-	ret := make([]*thread.Thread, len(list))
+	ret := make([]*MiniThread, len(list))
 	ret = list
 	stack := new(vector.IntVector)
 	stack.Push(0)
