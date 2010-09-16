@@ -35,7 +35,10 @@ func main(){
 	if open_err != nil { panic("g_output_path") }
 	defer fp.Close()
 	for _, it := range tl {
-		fmt.Fprintf(fp, "%d\t%s\t%s\n", it.Point, it.Name, it.Path)
+		dot := strings.Index(it.Sure, ".")
+		if dot > 0 {
+			fmt.Fprintf(fp, "%d\t%s\t%s\t%s\t%s\n", it.Point, it.Name, it.Saba, it.Ita, it.Sure[0:dot])
+		}
 	}
 }
 
