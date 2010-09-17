@@ -5,7 +5,6 @@ import (
 	"os"
 	"regexp"
 	"strings"
-	"runtime"
 	"container/vector"
 	"./thread"
 )
@@ -110,9 +109,9 @@ func threadList(bl []Board) ([]*MiniThread) {
 					t.GetPoint()
 					tlist.Push(NewMiniThread(t))
 				}
+				t = nil
 			}
 		}
-		runtime.GC()
 	}
 	tl := make([]*MiniThread, len(*tlist))
 	for i, it := range *tlist {
