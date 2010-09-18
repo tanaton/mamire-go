@@ -5,7 +5,12 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"./unlib"
 )
+
+var reg_id *regexp.Regexp = regexp.MustCompile(" ID:(........)")
+var reg_from *regexp.Regexp = regexp.MustCompile(" </b>(.+)¥((.+)¥)<b>")
+var reg_res *regexp.Regexp = regexp.MustCompile("&gt;&gt;([0-9]+)")
 
 type ThreadError string
 func (this ThreadError) String() string {
@@ -55,13 +60,7 @@ func NewThread(base, saba, ita, sure string) *Thread {
 }
 
 func (this *Thread) GetData() (bool, os.Error) {
-	reg_id, id_err := regexp.Compile(" ID:(........)")
-	if id_err != nil { return false, ThreadError("id") }
-	reg_from, from_err := regexp.Compile(" </b>(.+)¥((.+)¥)<b>")
-	if from_err != nil { return false, ThreadError("from") }
-	reg_res, res_err := regexp.Compile("&gt;&gt;([0-9]+)")
-	if res_err != nil { return false, ThreadError("res") }
-	data, err := fileGetContents(this.Path)
+	data, err := unlib.FileGetContents(this.Path)
 	if err != nil { return false, ThreadError("thread") }
 	list := strings.Split(string(data), "\n", -1)
 	list_length := len(list)
@@ -90,7 +89,8 @@ func (this *Thread) GetData() (bool, os.Error) {
 						i++
 					}
 				}
-				it.Next = next[0:i]
+				it.Next = make([]*Res, i)
+				copy(it.Next, next[0:i])
 			}
 		}
 	}
@@ -118,22 +118,5 @@ func point_r(res *Res, p int){
 			point_r(it, p + 3)
 		}
 	}
-}
-
-func fileGetContents(filename string) ([]byte, os.Error){
-	fp, open_err := os.Open(filename, os.O_RDONLY, 0777)
-	if open_err != nil {
-		return nil, ThreadError("open")
-	}
-	defer fp.Close()
-	fileinfo, stat_err := fp.Stat()
-	if stat_err != nil {
-		return nil, ThreadError("stat")
-	}
-	data := make([]byte, fileinfo.Size)
-  	if _, read_err := fp.Read(data); read_err != nil {
-		return nil, ThreadError("read")
-	}
-	return data, nil
 }
 
