@@ -26,14 +26,14 @@ type MiniThread struct {
 	Sure		string
 	Point		int
 }
-func NewMiniThread(t *thread.Thread) *MiniThread {
-	this := new(MiniThread)
+func NewMiniThread(t *thread.Thread) (this *MiniThread) {
+	this = new(MiniThread)
 	this.Name = t.Name
 	this.Saba = t.Saba
 	this.Ita = t.Ita
 	this.Sure = t.Sure
 	this.Point = t.Point
-	return this
+	return
 }
 
 const g_base_path string = "/2ch/dat"
@@ -42,7 +42,7 @@ const g_board_list_path string = "/2ch/getboard.data"
 const g_ita_data_path string = "/2ch/dat/ita.data"
 const g_thread_list string = "subject.txt"
 
-func main(){
+func main() {
 	cpu := 0
 	if 1 < len(os.Args) {
 		if i, err := strconv.Atoi(os.Args[1]); (err == nil) && (i > 0) {
@@ -70,7 +70,7 @@ func main(){
 	bfp.Flush()
 }
 
-func boardList(sl map[string]Board) ([]Board){
+func boardList(sl map[string]Board) ([]Board) {
 	data, open_err := unlib.FileGetContents(g_board_list_path)
 	if open_err != nil { panic("g_board_list_path") }
 	bl := strings.Split(string(data), "\n", -1)
@@ -106,7 +106,7 @@ func serverList() (map[string]Board) {
 
 func threadList(bl []Board, cpu int) (*vector.Vector) {
 	tlist := new(vector.Vector)
-	ch := make(chan *MiniThread)
+	ch := make(chan *MiniThread, cpu * 16)
 	sync := make(chan bool, cpu)
 	go func(){
 		for {
@@ -133,7 +133,7 @@ func threadList(bl []Board, cpu int) (*vector.Vector) {
 	return tlist
 }
 
-func threadThread(it Board, ch chan *MiniThread){
+func threadThread(it Board, ch chan *MiniThread) {
 	base_path := g_base_path + "/" + it.Saba + "/" + it.Ita
 	b_path := base_path + "/" + g_thread_list
 	data, open_err := unlib.FileGetContents(b_path)
@@ -146,6 +146,7 @@ func threadThread(it Board, ch chan *MiniThread){
 			if ok, _ := t.GetData(); ok {
 				ch <- NewMiniThread(t)
 			}
+			t.Remove()
 			t = nil
 		}
 	}

@@ -52,8 +52,9 @@ func NewThread(base, saba, ita, sure string) *Thread {
 func (this *Thread) GetData() (bool, os.Error) {
 	data, err := unlib.FileGetContents(this.Path)
 	if err != nil { return false, unlib.Error("thread") }
-	this.Ids = make(map[string]*vector.IntVector, 0)
+	this.Ids = make(map[string]*vector.IntVector)
 	list := strings.Split(string(data), "\n", -1)
+	data = nil
 	this.Length = len(list)
 	this.Reses = make([]Res, this.Length)
 	line := strings.Split(list[0], "<>", -1)
@@ -73,11 +74,15 @@ func (this *Thread) GetData() (bool, os.Error) {
 	for key := this.Length - 1; key >= 0; key-- {
 		it := &(this.Reses[key])
 		if it.Point == 0 && len(it.Next) > 0 {
-			num := len(*(this.Ids[it.Id]))
-			if num > 3 {
-				point_r(it, 10, 5)
-			} else if num > 1 {
-				point_r(it, 12, 3)
+			if p, ok := this.Ids[it.Id]; ok {
+				num := len(*p)
+				if num > 3 {
+					point_r(it, 10, 5)
+				} else if num > 1 {
+					point_r(it, 12, 3)
+				} else {
+					point_r(it, 15, 1)
+				}
 			} else {
 				point_r(it, 15, 1)
 			}
@@ -130,6 +135,20 @@ func (this *Thread) ankerSplit(res *Res, line string) (ret bool){
 		ret = true
 	}
 	return
+}
+
+func (this *Thread) Remove() {
+	var r Res
+	for key := range this.Reses {
+		this.Reses[key] = r
+	}
+	for key := range this.Ids {
+		this.Ids[key].Resize(0, 0)
+		this.Ids[key] = nil
+	}
+	var ra []Res
+	this.Reses = ra
+	this = nil
 }
 
 func point_r(res *Res, p, plus int){
