@@ -19,5 +19,5 @@ unlib: unlib.go
 
 .PHONY: clean
 clean:
-		rm -rf _go_.$(O) unlib.$(O) mamire.$(O) thread.$(O) $(TARG)
+		rm -rf *.$(O) $(TARG)
 
