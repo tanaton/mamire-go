@@ -1,17 +1,16 @@
 package unlib
 
 import (
-	"container/vector"	
 	"fmt"
 	"os"
 	"runtime"
+	"container/vector"
 )
 
 type Error string
 func (this Error) String() string {
 	return string(this)
 }
-
 
 func FileGetContents(filename string) ([]byte, os.Error){
 	fp, open_err := os.Open(filename, os.O_RDONLY, 0777)
@@ -87,3 +86,4 @@ func MemStatsPrint(){
 	println(mem.EnableGC)
 	println(mem.DebugGC)
 }
+
