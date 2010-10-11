@@ -5,16 +5,13 @@ import (
 	"os"
 	"bufio"
 	"regexp"
+	"runtime"
+	"strconv"
 	"strings"
 	"container/vector"
 	"./unlib"
 	"./thread"
 )
-
-type Error string
-func (this Error) String() string {
-	return string(this)
-}
 
 type Board struct {
 	Name		string
@@ -46,9 +43,18 @@ const g_ita_data_path string = "/2ch/dat/ita.data"
 const g_thread_list string = "subject.txt"
 
 func main(){
+	cpu := 0
+	if 1 < len(os.Args) {
+		if i, err := strconv.Atoi(os.Args[1]); (err == nil) && (i > 0) {
+			cpu = i
+			runtime.GOMAXPROCS(cpu)
+		}
+	} else {
+		cpu = 1
+	}
 	sl := serverList()
 	bl := boardList(sl)
-	tl := threadList(bl)
+	tl := threadList(bl, cpu)
 	pl := unlib.Qsort(*tl, cmp)
 	fp, open_err := os.Open(g_output_path, os.O_WRONLY | os.O_CREAT, 0777)
 	if open_err != nil { panic("g_output_path") }
@@ -98,27 +104,51 @@ func serverList() (map[string]Board) {
 	return list
 }
 
-func threadList(bl []Board) (*vector.Vector) {
+func threadList(bl []Board, cpu int) (*vector.Vector) {
 	tlist := new(vector.Vector)
-	for _, it := range bl {
-		base_path := g_base_path + "/" + it.Saba + "/" + it.Ita
-		b_path := base_path + "/" + g_thread_list
-		data, open_err := unlib.FileGetContents(b_path)
-		if open_err != nil { continue }
-		list := strings.Split(string(data), "\n", -1)
-		for _, line := range list {
-			array := strings.Split(line, "<>", -1)
-			if len(array) > 1 {
-				t := thread.NewThread(g_base_path, it.Saba, it.Ita, array[0])
-				if ok, _ := t.GetData(); ok {
-					t.GetPoint()
-					tlist.Push(NewMiniThread(t))
-				}
-				t = nil
+	ch := make(chan *MiniThread)
+	sync := make(chan bool, cpu)
+	go func(){
+		for {
+			if data := <- ch; data != nil {
+				tlist.Push(data)
+			} else {
+				break
 			}
 		}
+	}()
+	for _, it := range bl {
+		sync <- true
+		go func(){
+			threadThread(it, ch)
+			<- sync
+		}()
 	}
+	for cpu > 0 {
+		sync <- true
+		cpu--
+	}
+	close(ch)
+	close(sync)
 	return tlist
+}
+
+func threadThread(it Board, ch chan *MiniThread){
+	base_path := g_base_path + "/" + it.Saba + "/" + it.Ita
+	b_path := base_path + "/" + g_thread_list
+	data, open_err := unlib.FileGetContents(b_path)
+	if open_err != nil { return }
+	list := strings.Split(string(data), "\n", -1)
+	for _, line := range list {
+		array := strings.Split(line, "<>", -1)
+		if len(array) > 1 {
+			t := thread.NewThread(g_base_path, it.Saba, it.Ita, array[0])
+			if ok, _ := t.GetData(); ok {
+				ch <- NewMiniThread(t)
+			}
+			t = nil
+		}
+	}
 }
 
 func cmp(a, b interface{}) int {
@@ -126,3 +156,4 @@ func cmp(a, b interface{}) int {
 	bb := b.(*MiniThread)
 	return bb.Point - aa.Point
 }
+
