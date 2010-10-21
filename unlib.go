@@ -15,22 +15,26 @@ func (this Error) String() string {
 func FileGetContents(filename string) ([]byte, os.Error){
 	fp, open_err := os.Open(filename, os.O_RDONLY, 0777)
 	if open_err != nil {
-		return nil, Error("open")
+		return nil, open_err
 	}
 	defer fp.Close()
 	fileinfo, stat_err := fp.Stat()
 	if stat_err != nil {
-		return nil, Error("stat")
+		return nil, stat_err
 	}
 	data := make([]byte, fileinfo.Size)
 	if _, read_err := fp.Read(data); read_err != nil {
-		return nil, Error("read")
+		return nil, read_err
 	}
 	return data, nil
 }
 
-func Qsort(list []interface{}, cmp func(a, b interface{}) int) []interface{} {
-	ret := make([]interface{}, len(list))
+func Qsort(list []interface{}, cmp func(a, b interface{}) int) (ret []interface{}, err os.Error) {
+	if len(list) <= 0 {
+		err = Error("len")
+		return
+	}
+	ret = make([]interface{}, len(list))
 	ret = list
 	stack := new(vector.IntVector)
 	stack.Push(0)
@@ -45,8 +49,8 @@ func Qsort(list []interface{}, cmp func(a, b interface{}) int) []interface{} {
 			for i++; cmp(ret[i], pivot) < 0; i++ {}
 			for j--; cmp(ret[j], pivot) > 0; j-- {}
 			if i >= j { break }
-			tmp := ret[i];
-			ret[i] = ret[j];
+			tmp := ret[i]
+			ret[i] = ret[j]
 			ret[j] = tmp
 		}
 		if head < (i - 1) {
@@ -58,7 +62,7 @@ func Qsort(list []interface{}, cmp func(a, b interface{}) int) []interface{} {
 			stack.Push(tail)
 		}
 	}
-	return ret
+	return
 }
 
 func MemStatsPrint(){

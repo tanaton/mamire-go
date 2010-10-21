@@ -55,7 +55,10 @@ func main() {
 	sl := serverList()
 	bl := boardList(sl)
 	tl := threadList(bl, cpu)
-	pl := unlib.Qsort(*tl, cmp)
+	pl, qsort_err := unlib.Qsort(*tl, cmp)
+	if qsort_err != nil {
+		panic("qsort")
+	}
 	fp, open_err := os.Open(g_output_path, os.O_WRONLY | os.O_CREAT, 0777)
 	if open_err != nil { panic("g_output_path") }
 	defer fp.Close()
