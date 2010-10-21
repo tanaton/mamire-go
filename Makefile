@@ -3,19 +3,19 @@ include $(GOROOT)/src/Make.inc
 TARG=mamire
 GOFILES=mamire.go
 
-all: unlib thread $(TARG)
+all: unlib thread mamirelib mamire
 
-$(TARG): _go_.$O $(OFILES)
-		$(LD) -o $@ _go_.$O $(OFILES)
-
-_go_.$O: $(GOFILES) $(PREREQ)
-		$(GC) -o $@ $(GOFILES)
+mamire: mamire.$O $(OFILES)
+		$(LD) -o $@ mamire.$O $(OFILES)
 
 thread: thread.go
 		$(GC) thread.go
 
 unlib: unlib.go
 		$(GC) unlib.go
+
+mamirelib: mamire.go unlib.go thread.go
+		$(GC) mamire.go
 
 .PHONY: clean
 clean:
