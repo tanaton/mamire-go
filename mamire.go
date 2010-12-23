@@ -8,7 +8,6 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"container/vector"
 	"./unlib"
 	"./thread"
 )
@@ -16,20 +15,16 @@ import (
 type Board struct {
 	Name		string
 	Ita			string
-	Saba		string
 }
 
 type MiniThread struct {
 	Name		string
-	Saba		string
 	Ita			string
 	Sure		string
 	Point		int
 }
-func NewMiniThread(t *thread.Thread) (this *MiniThread) {
-	this = new(MiniThread)
+func NewMiniThread(t *thread.Thread) (this MiniThread) {
 	this.Name = t.Name
-	this.Saba = t.Saba
 	this.Ita = t.Ita
 	this.Sure = t.Sure
 	this.Point = t.Point
@@ -41,6 +36,9 @@ const g_output_path string = "/2ch/dat/2chpoint.tsv"
 const g_board_list_path string = "/2ch/getboard.data"
 const g_ita_data_path string = "/2ch/dat/ita.data"
 const g_thread_list string = "subject.txt"
+
+var LF_BYTE []byte = []byte{'\n'}
+var HTML_DELI_BYTE []byte = []byte{'<', '>'}
 
 func main() {
 	cpu := 0
@@ -55,7 +53,7 @@ func main() {
 	sl := serverList()
 	bl := boardList(sl)
 	tl := threadList(bl, cpu)
-	pl, qsort_err := unlib.Qsort(*tl, cmp)
+	pl, qsort_err := unlib.Qsort(tl, cmp)
 	if qsort_err != nil {
 		panic("qsort")
 	}
@@ -63,29 +61,36 @@ func main() {
 	if open_err != nil { panic("g_output_path") }
 	defer fp.Close()
 	bfp := bufio.NewWriter(fp)
-	for _, p := range pl[0:100] {
-		it := p.(*MiniThread)
+	for _, p := range pl[0:5] {
+		it := p.(MiniThread)
 		dot := strings.Index(it.Sure, ".")
 		if dot > 0 {
-			bfp.WriteString(fmt.Sprintf("%d\t%s\t%s\t%s\t%s\n", it.Point, it.Name, it.Saba, it.Ita, it.Sure[0:dot]))
+			bfp.WriteString(fmt.Sprintf("%d\t%s\t%s\t%s\n", it.Point, it.Name, it.Ita, it.Sure[0:dot]))
 		}
 	}
 	bfp.Flush()
 }
 
+/*
 func boardList(sl map[string]Board) ([]Board) {
 	data, open_err := unlib.FileGetContents(g_board_list_path)
 	if open_err != nil { panic("g_board_list_path") }
 	bl := strings.Split(string(data), "\n", -1)
-	list := make([]Board, len(bl))
-	i := 0
+	list := make([]Board, 0, len(bl))
 	for _, it := range bl {
 		if board, ok := sl[it]; ok {
-			list[i] = board
-			i++
+			list = append(list, board)
 		}
 	}
-	return list[0:i]
+	return list
+}
+*/
+func boardList(sl map[string]Board) ([]Board) {
+	list := make([]Board, 0, len(sl))
+	for _, it := range sl {
+		list = append(list, it)
+	}
+	return list
 }
 
 func serverList() (map[string]Board) {
@@ -100,21 +105,20 @@ func serverList() (map[string]Board) {
 		if match := reg.FindStringSubmatch(it); len(match) > 2 {
 			line.Name = match[3]
 			line.Ita = match[2]
-			line.Saba = match[1]
 			list[line.Ita] = line
 		}
 	}
 	return list
 }
 
-func threadList(bl []Board, cpu int) (*vector.Vector) {
-	tlist := new(vector.Vector)
-	ch := make(chan *MiniThread, cpu * 16)
+func threadList(bl []Board, cpu int) ([]interface{}) {
+	tlist := make([]interface{}, 0, 400000)
+	ch := make(chan MiniThread, cpu * 16)
 	sync := make(chan bool, cpu)
 	go func(){
 		for {
-			if data := <- ch; data != nil {
-				tlist.Push(data)
+			if data := <- ch; data.Sure != "" {
+				tlist = append(tlist, data)
 			} else {
 				break
 			}
@@ -122,6 +126,7 @@ func threadList(bl []Board, cpu int) (*vector.Vector) {
 	}()
 	for _, it := range bl {
 		sync <- true
+		runtime.GC()
 		go func(){
 			threadThread(it, ch)
 			<- sync
@@ -129,6 +134,7 @@ func threadList(bl []Board, cpu int) (*vector.Vector) {
 	}
 	for cpu > 0 {
 		sync <- true
+		runtime.GC()
 		cpu--
 	}
 	close(ch)
@@ -136,8 +142,8 @@ func threadList(bl []Board, cpu int) (*vector.Vector) {
 	return tlist
 }
 
-func threadThread(it Board, ch chan *MiniThread) {
-	base_path := g_base_path + "/" + it.Saba + "/" + it.Ita
+func threadThread(it Board, ch chan MiniThread) {
+	base_path := g_base_path + "/" + it.Ita
 	b_path := base_path + "/" + g_thread_list
 	data, open_err := unlib.FileGetContents(b_path)
 	if open_err != nil { return }
@@ -145,19 +151,18 @@ func threadThread(it Board, ch chan *MiniThread) {
 	for _, line := range list {
 		array := strings.Split(line, "<>", -1)
 		if len(array) > 1 {
-			t := thread.NewThread(g_base_path, it.Saba, it.Ita, array[0])
+			t := thread.NewThread(g_base_path, it.Ita, array[0])
 			if ok, _ := t.GetData(); ok {
 				ch <- NewMiniThread(t)
 			}
 			t.Remove()
-			t = nil
 		}
 	}
 }
 
 func cmp(a, b interface{}) int {
-	aa := a.(*MiniThread)
-	bb := b.(*MiniThread)
+	aa := a.(MiniThread)
+	bb := b.(MiniThread)
 	return bb.Point - aa.Point
 }
 

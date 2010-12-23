@@ -3,6 +3,7 @@ package unlib
 import (
 	"fmt"
 	"os"
+	"path"
 	"runtime"
 	"container/vector"
 )
@@ -13,6 +14,7 @@ func (this Error) String() string {
 }
 
 func FileGetContents(filename string) ([]byte, os.Error){
+	if filename == "" { return nil, Error("ファイル名がありません") }
 	fp, open_err := os.Open(filename, os.O_RDONLY, 0777)
 	if open_err != nil {
 		return nil, open_err
@@ -27,6 +29,63 @@ func FileGetContents(filename string) ([]byte, os.Error){
 		return nil, read_err
 	}
 	return data, nil
+}
+
+func FileSize(filename string) (int64, os.Error) {
+	if filename == "" { return -1, Error("ファイル名がありません") }
+	fi, err := os.Stat(filename)
+	if err != nil { return -1, err }
+	return fi.Size, nil
+}
+
+func FileMTime(filename string) (int64, os.Error) {
+	if filename == "" { return 0, Error("ファイル名がありません") }
+	fi, err := os.Stat(filename)
+	if err != nil { return 0, err }
+	return fi.Mtime_ns, nil
+}
+
+// ファイルに書き込む
+func FilePutContents(filename string, data []byte, flag bool) os.Error {
+	if filename == "" { return Error("ファイル名がありません") }
+	var bitflag int
+	if flag {
+		bitflag = os.O_WRONLY | os.O_CREAT
+	} else {
+		bitflag = os.O_WRONLY | os.O_APPEND
+	}
+	fp, err := os.Open(filename, bitflag, 0777)
+	if err != nil { return err }
+	defer fp.Close()
+	fp.Write(data)
+	return nil
+}
+
+// 文字列配列に検索文字列が格納されているか確認
+func InArray(str string, list []string) bool {
+	for _, data := range list {
+		if str == data {
+			return true
+		}
+	}
+	return false
+}
+
+// ファイルの存在確認
+func FileExists(filename string) bool {
+	if filename == "" { return false }
+	_, err := os.Stat(filename)
+	if err != nil { return false }
+	return true
+}
+
+// フォルダ生成
+func MakeFolder(p string) os.Error {
+	if p == "" { return nil }
+	dir, _ := path.Split(p)
+	mkdir_err := os.MkdirAll(dir, 0777)
+	if mkdir_err != nil { return mkdir_err }
+	return nil
 }
 
 func Qsort(list []interface{}, cmp func(a, b interface{}) int) (ret []interface{}, err os.Error) {

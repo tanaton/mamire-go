@@ -5,7 +5,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"container/vector"
 	"./unlib"
 )
 
@@ -30,29 +29,26 @@ type Res struct {
 type Thread struct {
 	Name		string
 	Path		string
-	Saba		string
 	Ita			string
 	Sure		string
 	Length		int
 	Point		int
 	Reses		[]Res
-	Ids			map[string]*vector.IntVector
+	Ids			map[string][]int
 }
 
-func NewThread(base, saba, ita, sure string) *Thread {
+func NewThread(base, ita, sure string) *Thread {
 	this := new(Thread)
-	path := base + "/" + saba + "/" + ita + "/" + sure[0:4] + "/" + sure
-	this.Saba = saba
 	this.Ita = ita
 	this.Sure = sure
-	this.Path = path
+	this.Path = base + "/" + ita + "/" + sure[0:4] + "/" + sure
 	return this
 }
 
 func (this *Thread) GetData() (bool, os.Error) {
 	data, err := unlib.FileGetContents(this.Path)
 	if err != nil { return false, unlib.Error("thread") }
-	this.Ids = make(map[string]*vector.IntVector)
+	this.Ids = make(map[string][]int)
 	list := strings.Split(string(data), "\n", -1)
 	data = nil
 	this.Length = len(list)
@@ -75,7 +71,7 @@ func (this *Thread) GetData() (bool, os.Error) {
 		it := &(this.Reses[key])
 		if it.Point == 0 && len(it.Next) > 0 {
 			if p, ok := this.Ids[it.Id]; ok {
-				num := len(*p)
+				num := len(p)
 				if num > 3 {
 					point_r(it, 10, 5)
 				} else if num > 1 {
@@ -96,11 +92,10 @@ func (this *Thread) idSplit(res *Res, line string) (ret bool){
 	ret = false
 	if array := reg_id.FindStringSubmatch(line); len(array) > 1 {
 		id := array[1]
-		if _, ok := this.Ids[id]; ok {
-			this.Ids[id].Push(res.Number)
+		if m, ok := this.Ids[id]; ok {
+			this.Ids[id] = append(m, res.Number)
 		} else {
-			this.Ids[id] = new(vector.IntVector)
-			this.Ids[id].Push(res.Number)
+			this.Ids[id] = []int{res.Number}
 		}
 		res.Id = id
 		ret = true
@@ -120,14 +115,14 @@ func (this *Thread) fromSplit(res *Res, line string) (ret bool){
 func (this *Thread) ankerSplit(res *Res, line string) (ret bool){
 	ret = false
 	if anker := reg_res.FindAllStringSubmatch(line, -1); len(anker) > 0 {
-		res.Next = make(map[int]*Res, 0)
+		res.Next = make(map[int]*Res)
 		for _, item := range anker {
 			resban, _ := strconv.Atoi(item[1])
 			if resban < this.Length {
 				anker := &(this.Reses[resban])
 				res.Next[resban] = anker
 				if anker.Back == nil {
-					anker.Back = make(map[int]*Res, 0)
+					anker.Back = make(map[int]*Res)
 				}
 				anker.Back[res.Number] = res
 			}
@@ -138,17 +133,28 @@ func (this *Thread) ankerSplit(res *Res, line string) (ret bool){
 }
 
 func (this *Thread) Remove() {
-	var r Res
 	for key := range this.Reses {
-		this.Reses[key] = r
+		data := &(this.Reses[key])
+		res_remove(&(data.Next))
+		res_remove(&(data.Back))
+		data.Next = nil
+		data.Back = nil
+		this.Reses[key] = Res{}
 	}
 	for key := range this.Ids {
-		this.Ids[key].Resize(0, 0)
-		this.Ids[key] = nil
+		this.Ids[key] = nil, false
 	}
-	var ra []Res
-	this.Reses = ra
-	this = nil
+	this.Reses = nil
+	this.Ids = nil
+}
+
+func res_remove(m *(map[int]*Res)) {
+	for k := range *m {
+		it := (*m)[k]
+		res_remove(&(it.Next))
+		res_remove(&(it.Back))
+		(*m)[k] = nil, false
+	}
 }
 
 func point_r(res *Res, p, plus int){
